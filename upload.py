@@ -1,33 +1,41 @@
 import logging
 import re
-from datetime import datetime
-from datetime import timedelta
-
+from datetime import datetime, timedelta
 from time import sleep
 
+from selenium.common.exceptions import (
+    ElementNotInteractableException,
+    NoSuchElementException,
+)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import NoSuchElementException, ElementNotInteractableException
 
-today = datetime.now() + timedelta(minutes = 15)
+today = datetime.now() + timedelta(minutes=15)
+
 
 def upload_file(
-        driver: WebDriver,
-        video_path: str,
-        title: str,
-        description: str,
-        game: str = False,
-        kids: bool = False,
-        upload_time: datetime = datetime(today.year, today.month, today.day, today.hour, today.minute),
-        thumbnail_path: str = None,
+    driver: WebDriver,
+    video_path: str,
+    title: str,
+    description: str,
+    game: str = False,
+    kids: bool = False,
+    upload_time: datetime = datetime(
+        today.year, today.month, today.day, today.hour, today.minute
+    ),
+    thumbnail_path: str = None,
 ):
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "ytcp-button#create-icon"))).click()
     WebDriverWait(driver, 20).until(
-        EC.element_to_be_clickable((By.XPATH, '//tp-yt-paper-item[@test-id="upload-beta"]'))
+        EC.element_to_be_clickable((By.CSS_SELECTOR, "ytcp-button#create-icon"))
+    ).click()
+    WebDriverWait(driver, 20).until(
+        EC.element_to_be_clickable(
+            (By.XPATH, '//tp-yt-paper-item[@test-id="upload-beta"]')
+        )
     ).click()
     video_input = driver.find_element_by_xpath('//input[@type="file"]')
     logging.info("Setting Video File Path")
@@ -37,9 +45,11 @@ def upload_file(
     _set_advanced_settings(driver, game, kids)
     # Go to visibility settings
     for i in range(3):
-        WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.ID, "next-button"))).click()
+        WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.ID, "next-button"))
+        ).click()
 
-    #_set_time(driver, upload_time)
+    # _set_time(driver, upload_time)
     try:
         _set_visibility(driver)
     except:
@@ -66,19 +76,23 @@ def upload_file(
 def _wait_for_processing(driver):
     logging.info("Waiting for processing to complete")
     # Wait for processing to complete
-    progress_label: WebElement = driver.find_element_by_css_selector("span.progress-label")
+    progress_label: WebElement = driver.find_element_by_css_selector(
+        "span.progress-label"
+    )
     pattern = re.compile(r"(finished processing)|(processing hd.*)|(check.*)")
     current_progress = progress_label.get_attribute("textContent")
     last_progress = None
     while not pattern.match(current_progress.lower()):
         if last_progress != current_progress:
-            logging.info(f'Current progress: {current_progress}')
+            logging.info(f"Current progress: {current_progress}")
         last_progress = current_progress
         sleep(5)
         current_progress = progress_label.get_attribute("textContent")
 
 
-def _set_basic_settings(driver: WebDriver, title: str, description: str, thumbnail_path: str = None):
+def _set_basic_settings(
+    driver: WebDriver, title: str, description: str, thumbnail_path: str = None
+):
     logging.info("Setting Basic Settings")
     title_input: WebElement = WebDriverWait(driver, 20).until(
         EC.element_to_be_clickable(
@@ -131,9 +145,18 @@ def _set_advanced_settings(driver: WebDriver, game_title: str, made_for_kids: bo
             )
         ).click()
 
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable(
-        (By.NAME, "VIDEO_MADE_FOR_KIDS_MFK" if made_for_kids else "VIDEO_MADE_FOR_KIDS_NOT_MFK")
-    )).click()
+    WebDriverWait(driver, 20).until(
+        EC.element_to_be_clickable(
+            (
+                By.NAME,
+                (
+                    "VIDEO_MADE_FOR_KIDS_MFK"
+                    if made_for_kids
+                    else "VIDEO_MADE_FOR_KIDS_NOT_MFK"
+                ),
+            )
+        )
+    ).click()
 
 
 def _set_endcard(driver: WebDriver):
@@ -151,17 +174,25 @@ def _set_endcard(driver: WebDriver):
             logging.warning(f"Couldn't find endcard button. Retry in 5s! ({i}/10)")
             sleep(5)
 
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.ID, "save-button"))).click()
+    WebDriverWait(driver, 20).until(
+        EC.element_to_be_clickable((By.ID, "save-button"))
+    ).click()
 
 
 def _set_time(driver: WebDriver, upload_time: datetime):
     # Start time scheduling
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.NAME, "SCHEDULE"))).click()
+    WebDriverWait(driver, 20).until(
+        EC.element_to_be_clickable((By.NAME, "SCHEDULE"))
+    ).click()
 
     # Open date_picker
-    driver.find_element_by_css_selector("#datepicker-trigger > ytcp-dropdown-trigger:nth-child(1)").click()
+    driver.find_element_by_css_selector(
+        "#datepicker-trigger > ytcp-dropdown-trigger:nth-child(1)"
+    ).click()
 
-    date_input: WebElement = driver.find_element_by_css_selector("input.tp-yt-paper-input")
+    date_input: WebElement = driver.find_element_by_css_selector(
+        "input.tp-yt-paper-input"
+    )
     date_input.clear()
     # Transform date into required format: Mar 19, 2021
     date_input.send_keys(upload_time.strftime("%b %d, %Y"))
@@ -172,7 +203,9 @@ def _set_time(driver: WebDriver, upload_time: datetime):
         "#time-of-day-trigger > ytcp-dropdown-trigger:nth-child(1) > div:nth-child(2)"
     ).click()
 
-    time_list = driver.find_elements_by_css_selector("tp-yt-paper-item.tp-yt-paper-item")
+    time_list = driver.find_elements_by_css_selector(
+        "tp-yt-paper-item.tp-yt-paper-item"
+    )
     # Transform time into required format: 8:15 PM
     time_str = upload_time.strftime("%I:%M %p").strip("0")
     time = [time for time in time_list[2:] if time.text == time_str][0]
@@ -182,9 +215,15 @@ def _set_time(driver: WebDriver, upload_time: datetime):
 def _set_visibility(driver: WebDriver):
     # Start time scheduling
     logging.info("Setting Visibility to public")
-    WebDriverWait(driver, 30).until(EC.element_to_be_clickable((By.NAME, "FIRST_CONTAINER"))).click()
-    WebDriverWait(driver, 30).until(EC.element_to_be_clickable((By.NAME, "PUBLIC"))).click()
+    WebDriverWait(driver, 30).until(
+        EC.element_to_be_clickable((By.NAME, "FIRST_CONTAINER"))
+    ).click()
+    WebDriverWait(driver, 30).until(
+        EC.element_to_be_clickable((By.NAME, "PUBLIC"))
+    ).click()
     sleep(10)
-    WebDriverWait(driver, 30).until(EC.element_to_be_clickable((By.ID, "done-button"))).click()
+    WebDriverWait(driver, 30).until(
+        EC.element_to_be_clickable((By.ID, "done-button"))
+    ).click()
     # sleep(10)
     # WebDriverWait(driver, 30).until(EC.element_to_be_clickable((By.ID, "close-button"))).click()
